@@ -1,0 +1,268 @@
+---
+title: "Wpływ struktury rynku sprzedaży buraków cukrowych w Polsce na oceny opłacalności ich produkcji"
+author: "Grzegorz Smoliński"
+date: "17.02.2020"
+output: 
+  html_document: 
+    theme: readable
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, fig.width = 6, fig.asp = 0.618, fig.align = "center")
+library(tidyverse)
+library(ggthemes)
+library(stringi)
+library(forcats)
+library(extrafont)
+library(infer)
+library(kableExtra)
+library(scales)
+library(cowplot)
+options(scipen = 99, digits = 2, dplyr.summarise.inform = FALSE)
+font_import()
+loadfonts(device = "win")
+```
+
+```{r load_data, echo = FALSE}
+load("../rda/dane_buraki.rda")
+```
+
+## Wstęp
+Poniżej opisano przeprowadzone analizy statystyczne na zbiorze danych liczącym `r nrow(dane_buraki)` obserwacji oraz `r length(colnames(dane_buraki)[c(2, 4, 5, 6, 7)])` zmiennych. Celem była analiza, w jaki sposób obecna sytuacja na rynku sprzedaży buraków cukrowych wpływa na postrzeganie opłacalności uprawy buraków cukrowych przez rolników. W celu przeprowadzenia analiz, wzięto pod uwagę:
+
+* areał uprawy buraków cukrowych
+* z którym z przedsiębiorstw cukrowych respondent ma podpisaną umowę na dostarczenie buraków cukrowych
+* czy respondent uważa, że ma wybór, z którym z przedsiębiorstw cukrowych może podpisać umowę
+* czy buraki cukrowe stanowią uprawę, która przynosi największy dochód w gospodarstwie
+* jak respondent ocenia opłacalność uprawy buraków cukrowych.
+
+## Uwagi metodologiczne
+Badanie odbyło się w dniach 3-11.02.2020 r. Przeprowadzono wywiady CATI ze `r nrow(dane_buraki)` respondentami - rolnikami uprawiającymi min. 5 ha buraków cukrowych. Zastosowano dobór kwotowo-losowy, w którym kwoty ustalono na podstawie areału uprawy buraków cukrowych w poszczególnych województwach. Poniżej opisano uzyskane wyniki.
+
+## Wyniki
+
+### 1. Ocena opłacalności uprawy buraków cukrowych
+Wszystkie przeprowadzone analizy miały na celu zbadanie wpływu wybranych zmiennych na ocenę opłacalności uprawy buraków cukrowych. Oceny te same w sobie okazały się dość niskie - rolnicy w większości postrzegają opłacalność wspomnianej uprawy na dziesięciostopniowej skali negatywnie.
+
+```{r ocena_oplacalnosci_uprawy_ogolnie}
+dane_buraki %>%
+  mutate(oplacalnosc_zagregowana = case_when(ocena_oplacalnosci < 5 ~ "ocena poniżej neutralnej",
+                                             ocena_oplacalnosci == 5 | ocena_oplacalnosci == 6 ~ "ocena neutralna",
+                                             ocena_oplacalnosci > 6 ~ "ocena powyżej neutralnej"
+                                             ),
+         oplacalnosc_zagregowana = factor(oplacalnosc_zagregowana, levels = c("ocena poniżej neutralnej", "ocena neutralna", "ocena powyżej neutralnej"))) %>%
+  ggplot(aes(oplacalnosc_zagregowana)) +
+  geom_bar(fill = "#B2B4B6") +
+  coord_flip() +
+  theme_minimal() +
+  ggtitle("Ocena opłacalności uprawy buraków cukrowych") +
+  ylab("Liczba") +
+  xlab("") +
+  theme(axis.line.x.bottom = element_line(color = "#9E0A34"),
+        axis.line.y.left = element_line(color = "#9E0A34"),
+        text = element_text(family = "Georgia", size = 11),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.x = element_blank())
+```
+
+Na powyższym wykresie przyjęto, że odpowiedzi "5" i "6" będą traktowane jako odpowiedzi neutralne. Dominacja ocen negatywnych sama w sobie oczywiście jest interesująca, ale jest też trudna w interpretacji, ponieważ bez odniesienia do tego, co jest jej podłożem, niewiele można stwierdzić.
+
+### 2. Możliwość wyboru przedsiębiorstwa cukrowego a ocena opłacalności uprawy buraków cukrowych
+W Polsce funkcjonują cztery przedsiębiorstwa cukrowe, z którymi można podpisać umowę na sprzedaż buraków cukrowych: `r levels(as.factor(dane_buraki$przedsiebiorstwo_nalezy))`. Geograficzne rozmieszczenie poszczególnych cukrowni oraz ich status właścicielski sprawiają jednak, że w praktyce nie zawsze można mówić o możliwości wyboru odbiorcy buraków cukrowych - na danym obszarze może bowiem funkcjonować tylko jedno przedsiębiorstwo (tj. odległość do innego producenta cukru może być postrzegana jako tak duża, że niemożliwa do pokonania, np. z racji ekonomicznej nieopłacalności). Badania pokazały, że zdecydowana większość rolników uważa, że nie ma wyboru, z kim podpisać umowę.
+
+```{r wybor_przedsiebiorstwa_wykres}
+dane_buraki %>%
+  ggplot(aes(wybor_przedsiebiorstwa)) +
+  geom_bar(fill = "#B2B4B6") +
+  theme_minimal() +
+  ggtitle("Rolnicy deklarujący, czy mają wybór, z kim podpisać umowę \nna dostarczenie buraków cukrowych") +
+  ylab("Liczba") +
+  xlab("") +
+  theme(axis.line.x.bottom = element_line(color = "#9E0A34"),
+        axis.line.y.left = element_line(color = "#9E0A34"),
+        text = element_text(family = "Georgia", size = 11),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.y = element_blank())
+```
+
+Mimo że udzielane odpowiedzi należy uznać za subiektywne, ponieważ nie odnosiły się one bezpośrednio do faktów, lecz do odczuć, to z drugiej strony trudno uznać, by stało za nimi coś innego niż ekonomiczna kalkulacja - respondenci, którzy uznali, że nie mają wyboru, z pewnością tego wyboru nie mają, tzn. poszukiwania alternatywnego odbiorcy buraków cukrowych wiązałyby się dla nich ze zbyt dużymi kosztami. Czy sprawia to, że gorzej oceniają opłacalność uprawy buraków cukrowych? Pytanie to opiera się na założeniu, że pozycja rolnika jako sprzedawcy na rynku jest dużo słabsza niż pozycja kupującego, gdyż ten drugi nie musi konkurować z innymi kupującymi. Zgromadzone dane nie potwierdzają jednak takiego przypuszczenia.
+
+```{r, p_value_wybor_przedsiebiorstwa, cache = TRUE}
+options(scipen = 99, digits = 2)
+obserwowana_srednia_wybor_przedsiebiorstwa <- dane_buraki %>%
+  specify(ocena_oplacalnosci ~ wybor_przedsiebiorstwa) %>%
+  calculate(stat = "diff in means", order = c("Tak", "Nie"))
+
+p <- dane_buraki %>%
+  specify(ocena_oplacalnosci ~ wybor_przedsiebiorstwa) %>%
+  hypothesize(null = "independence") %>%
+  generate(reps = 10000, type = "permute") %>%
+  calculate(stat = "diff in means", order = c("Tak", "Nie")) %>%
+  get_p_value(obs_stat = obserwowana_srednia_wybor_przedsiebiorstwa, direction = "two_sided") %>%
+  pull() %>%
+  round(2)
+
+p <- str_replace(as.character(p), "\\.", ",")
+```
+
+Rolnicy, którzy mają wybór, z kim podpisać umowę na odbiór buraków cukrowych, ocenili opłacalność ich uprawy nieco niżej niż rolnicy pozbawieni takiego wyboru (różnica średnich wyniosła -0,6 pkt.), wynik nie jest jednak istotny statystycznie przy przyjętym poziomie istotności 0,05 (przeprowadzono test dwustronny). Wartość $p$^[W celu sprawdzenia istotności statystycznej, odwołano się do metod symulacyjnych. Utworzono tak samo liczną próbę, jak ta w omawianym badaniu i wymieszano oceny opłacalności uprawy buraków cukrowych. Powtórzono tę procedurę dziesieć tysięcy razy, otrzymując tym samym dziesięć tysięcy prób, w których oceny opłacalności uprawy były niezależne od odpowiedzi na pytanie, czy respondent ma wybór, z kim podpisać umowę. Otrzymano zaprezentowaną wartość $p$, czyli wartość mówiącą o tym, jaki odsetek tak utworzonych prób miał taką samą lub większą (w wartościach bezwzględnych) różnicę między średnimi ocenami opłacalności uprawy buraków cukrowych w zalezności od tego, czy respondent ma wybór, z jakim przedsiębiorstwem cukrowym podpisać umowę na sprzedaż buraków cukrowych.] wyniosła `r p`.
+
+### 3. Udział buraków cukrowych w dochodzie gospodarstwa rolnego  oraz posiadanie wyboru, z kim podpisać umowę a ocena opłacalności uprawy
+Postrzeganie opłacalności uprawy może być zależne od tego, jak ważna - w sensie ekonomicznym - jest ta uprawa dla gospodarstwa rolnego. Jeśli wynik ekonomiczny gospodarstwa w dużym stopniu od niej zależy, niżej postrzegana opłacalność może stać się relatywnie jeszcze niższa - podobnie w przypadku, gdy jest ona wyższa od neutralnej. Co więcej, wpływ tej zmiennej może być powiązany z tym, czy respondent deklaruje, że ma wybór, z którym przedsiębiorstwem cukrowym podpisać umowę czy też nie - brak wyboru może być tym bardziej dotkliwy, im wyższy udział uprawy w dochodzie gospodarstwa.
+
+Dane nie pozwalają jednak również w tym przypadku na żadne wnioski - liczba osób, które odpowiedziały, że uprawa buraka cukrowego stanowi większość dochodu w gospodarstwie jest niewielka, a jeszcze mniejsza jest liczba osób, które zadeklarowały, że nie mogą wybrać przedsiębiorstwa cukrowego, z którym podpiszą umowę, ale uprawa buraków cukrowych odpowiada w ich gospodarstwie za większość dochodu:
+
+```{r tabela_1}
+srednie_oceny_do_tabeli_1 <- dane_buraki %>%
+  group_by(wybor_przedsiebiorstwa, buraki_najwiekszy_dochod) %>%
+  summarise(srednia_ocena = mean(ocena_oplacalnosci))
+srednie_oceny_do_tabeli_1$srednia_ocena <- str_replace(as.character(round(srednie_oceny_do_tabeli_1$srednia_ocena, 2)), "\\.", ",")
+tabela_1 <- table(dane_buraki$wybor_przedsiebiorstwa, dane_buraki$buraki_najwiekszy_dochod)
+rownames(tabela_1) <- c("Wybór przedsiębiorstwa - Tak", "Wybór przedsiębiorstwa - Nie")
+tabela_1[1, 1] <- str_c(as.character(tabela_1[1, 1]), paste0("(", srednie_oceny_do_tabeli_1$srednia_ocena[3], ")"), sep = " ")
+tabela_1[2, 1] <- str_c(as.character(tabela_1[2, 1]), paste0("(", srednie_oceny_do_tabeli_1$srednia_ocena[1], ")"), sep = " ")
+tabela_1[1, 2] <- str_c(as.character(tabela_1[1, 2]), paste0("(", srednie_oceny_do_tabeli_1$srednia_ocena[4], ")"), sep = " ")
+tabela_1[2, 2] <- str_c(as.character(tabela_1[2, 2]), paste0("(", srednie_oceny_do_tabeli_1$srednia_ocena[2], ")"), sep = " ")
+tabela_1 %>%
+ kable(caption = "Posiadanie wyboru przedsiębiorstwa cukrowego a największy udział buraków cukrowych w dochodzie gospodarstwa") %>%
+ kable_styling(full_width = FALSE, font_size = 14) %>%
+ column_spec(column = 1, bold = TRUE) %>%
+ add_header_above(c("", "Buraki cukrowe - największy udział w dochodzie?" = 2)) %>%
+  footnote(symbol = "W nawiasach podano średnią ocenę opłacalności uprawy buraków cukrowych.",
+          general_title = "", fixed_small_size = TRUE)
+```
+
+Wyniki nie są istotne statystycznie ^[Także w tym przypadku zastosowano metodę symulacyjną, przyjęto $\alpha = 0,05$ oraz posłużono się testem dwustronnym.], ani w przypadku testu, czy średnie oceny opłacalności dla osób, u których buraki cukrowe stanowią największy dochód w gospodarstwie, są inne niż średnie oceny opłacalności dla osób, u których buraki cukrowe nie stanowią największego dochodu w gospodarstwie, ani w przypadku osób, u których buraki cukrowe stanowią największy udział w dochodzie i jednocześnie osoby te nie mają wyboru przedsiębiorstwa cukrowego.
+
+### 4. Posiadanie umowy z konkretnym przedsiębiorstwem cukrowym a ocena opłacalności uprawy
+Jeśli postrzeganie przez respondentów tego, jak ich uprawa buraków cukrowych jest opłacalna, ma zależeć od relacji między sprzedawcą (rolnikiem) a kupującym (przedsiębiorstwem cukrowym), to trzeba również wziąć pod uwagę, że różnice mogą zależeć po prostu od tego, z kim rolnik współpracuje. Jes to tym bardziej uzasadnione, że rolnicy zazwyczaj, jak pokazały już przedstawione wyniki, nie mają wyboru, z kim podpisać umowę na sprzedaż buraków cukrowych. Na wykresie poniżej zaprezentowano średnie oceny opłacalności uprawy buraków cukrowych w zależności od przedsiębiorstwa cukrowego, któremu sprzedaje się plony.
+
+```{r wykres_rozrzutu_przedsiebiorstwo_a_oplacalnosc}
+dane_buraki %>%
+  mutate(przedsiebiorstwo_nalezy = fct_recode(przedsiebiorstwo_nalezy,
+                                              "Krajowa Spółka Cukrowa" = "Krajowa Spółka Cukrowa (Polski Cukier)")) %>%
+  ggplot(aes(przedsiebiorstwo_nalezy, ocena_oplacalnosci)) +
+  geom_point(position = position_jitter(width = 0.2)) +
+  theme_minimal() +
+  ggtitle("Ocena opłacalności uprawy w zależności od przedsiębiorstwa \ncukrowego") +
+  ylab("Ocena") +
+  xlab("") +
+  theme(axis.line.x.bottom = element_line(color = "#9E0A34"),
+        axis.line.y.left = element_line(color = "#9E0A34"),
+        text = element_text(family = "Georgia", size = 11),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        plot.caption = element_text(hjust = 0)) +
+  stat_summary(fun = "mean", color = "#9E0A34", shape = 19, geom = "point", size = 3) +
+  scale_y_continuous(breaks = pretty_breaks()) +
+  labs(caption = "* Pozycje punktów zostały przesunięte, by łatwiej można było je rozróżnić.")
+  
+```
+
+```{r anova_infer, cache = TRUE}
+obserwowane <- dane_buraki %>%
+  specify(ocena_oplacalnosci ~ przedsiebiorstwo_nalezy) %>%
+  calculate(stat = "F")
+
+p_anova <- dane_buraki %>%
+  specify(ocena_oplacalnosci ~ przedsiebiorstwo_nalezy) %>%
+  hypothesize(null = "independence") %>%
+  generate(reps = 10000, type = "permute") %>%
+  calculate(stat = "F") %>%
+  get_p_value(obs_stat = obserwowane, direction = "two_sided")
+p_anova <- str_replace(string = as.character(round(p_anova, 2)), pattern = "\\.", ",")
+
+#Testy post-hoc:
+wynik_aov_2 <- aov(ocena_oplacalnosci ~ przedsiebiorstwo_nalezy, dane_buraki)
+wynik_post_hoc <- TukeyHSD(wynik_aov_2)
+```
+
+Średnie oceny zostały zaznaczone czerwoną kropką, natomiast czarne kropki odpowiadają liczbie rolników, którzy mają podpisane umowy z danym przedsiębiorstwem. W celu zbadania różnic w średnich ocenach posłużono się testem ANOVA. Analizy, oparte na symulacji, pokazały, że co najmniej jedna średnia różni się istotnie od co najmniej jednej średniej ($p = `r p_anova`$). Dalsze testy wskazały Nordzucker jako to przedsiębiorstwo, które ma niższą średnią ocenę opłacalności uprawy w porównaniu do Krajowej Spółki Cukrowej oraz Pfeifer & Langen, a ponieważ jest tak pomimo niewielkiej liczby osób, które mają podpisaną umowę z Nordzucker, należy uznać, że efekt spadku oceny opłacalności jest względnie dość duży.
+
+```{r roznice_tabela_przedsiebiorstwa}
+t <- dane_buraki %>%
+  filter(przedsiebiorstwo_nalezy != levels(factor(dane_buraki$przedsiebiorstwo_nalezy))[4]) %>%
+  group_by(przedsiebiorstwo_nalezy) %>%
+  summarise(ocena = round(mean(ocena_oplacalnosci), 2)) %>%
+  mutate(przedsiebiorstwo_nalezy = fct_recode(przedsiebiorstwo_nalezy,
+                                              "Krajowa Spółka Cukrowa" = "Krajowa Spółka Cukrowa (Polski Cukier)"),
+         przedsiebiorstwo_nalezy = factor(przedsiebiorstwo_nalezy, levels = c("Nordzucker", "Krajowa Spółka Cukrowa", "Pfeifer & Langen")),
+         relatywna_ocena_nordzucker = ocena[przedsiebiorstwo_nalezy == "Nordzucker"] - ocena,
+         ocena = str_replace(ocena, "\\.", ","),
+         relatywna_ocena_nordzucker = str_replace(relatywna_ocena_nordzucker, "\\.", ",")) %>%
+  arrange(przedsiebiorstwo_nalezy)
+colnames(t) <- c("Przedsiębiorstwo", "Średnia ocena", "Relatywna ocena dla Nordzucker")
+
+t %>%
+  kable(caption = "Ocena opłacalności uprawy przy podpisanej umowie z Nordzucker na tle innych przedsiębiorstw") %>%
+  kable_styling(bootstrap_options = "striped", full_width = FALSE, font_size = 14)
+```
+
+
+### 5. Wpływ areału na ocenę opłacalności uprawy buraków cukrowych
+Wielkość uprawy buraków cukrowych nie jest związana z relacjami sprzedawca-kupujący na rynku buraków cukrowych, ale jest to czynnik, którego ewentualnego wpływu nie można pominąć - im wyższy areał, tym należałoby się spodziewać większej opłacalności produkcji. Wynika to bowiem z tego, że niższe ceny można otrzymać przy zakupie środków produkcji, gdyż wolumen zakupów jest większy, a zatem lepsza jest pozycja negocjacyjna. Podobnie powinno być przy sprzedaży buraków cukrowych - większa ilość towaru powinna przełożyć się na lepsze ceny, aczkolwiek byłoby to prawdziwe jedynie przy dostatecznie zróżnicowanym rynku. Nie jest to przypadek przedsiębiorstw cukrowych funkcjonujących na rynku polskim i dlatego nie dziwi, że trudno dostrzec jakąkolwiek relację pomiędzy areałem buraków cukrowych a oceną opłacalności ich produkcji:
+
+```{r areal_oplacalnosc_wykres_rozrzutu}
+dane_buraki %>%
+  mutate(areal = areal) %>%
+  ggplot(aes(areal, ocena_oplacalnosci)) +
+  geom_point(position = position_jitter()) +
+  theme_minimal() +
+  ggtitle("Wpływ wielkości areału na ocenę opłacalności \nprodukcji buraków cukrowych") +
+  ylab("Ocena") +
+  xlab("Areał (skala logarytmiczna)") +
+  theme(axis.line.x.bottom = element_line(color = "#9E0A34"),
+        axis.line.y.left = element_line(color = "#9E0A34"),
+        text = element_text(family = "Georgia", size = 11),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        plot.caption = element_text(hjust = 0)) +
+  scale_y_continuous(breaks = pretty_breaks()) +
+  labs(caption = "* Pozycje punktów zostały przesunięte, by łatwiej można było je rozróżnić.") +
+  scale_x_continuous(trans = "log2")
+```
+
+```{r korelacja, cache = TRUE}
+korelacja_obserwowana <- dane_buraki %>%
+  specify(ocena_oplacalnosci ~ areal) %>%
+  calculate(stat = "correlation")
+
+p_korelacja <- dane_buraki %>%
+  specify(ocena_oplacalnosci ~ areal) %>%
+  hypothesize(null = "independence") %>%
+  generate(reps = 10000, type = "permute") %>%
+  calculate(stat = "correlation") %>%
+  get_p_value(obs_stat = korelacja_obserwowana, direction = "two_sided")
+p_korelacja <- str_replace(as.character(round(p_korelacja, 2)), pattern = "\\.", ",")
+korelacja_obserwowana <- str_replace(as.character(round(korelacja_obserwowana, 2)), pattern = "\\.", ",")
+```
+
+```{r korelacja_KSC, cache = TRUE}
+dane_tylko_KSC <- dane_buraki %>%
+  filter(przedsiebiorstwo_nalezy == "Krajowa Spółka Cukrowa (Polski Cukier)",
+         areal < 50)
+
+korelacja_tylko_KSC <- dane_tylko_KSC %>%
+  specify(ocena_oplacalnosci ~ areal) %>%
+  calculate(stat = "correlation")
+
+p_korelacja_KSC <- dane_tylko_KSC %>%
+  specify(ocena_oplacalnosci ~ areal) %>%
+  hypothesize(null = "independence") %>%
+  generate(10000, "permute") %>%
+  calculate("correlation") %>%
+  get_p_value(obs_stat = korelacja_tylko_KSC, direction = "two_sided") %>%
+  pull
+
+p_korelacja_KSC <- round(p_korelacja_KSC, 2)
+korelacja_tylko_KSC <- round(korelacja_tylko_KSC, 2)
+p_korelacja_KSC <- str_replace(as.character(p_korelacja_KSC), "\\.", ",")
+korelacja_tylko_KSC <- str_replace(as.character(korelacja_tylko_KSC), "\\.", ",")
+```
+
+Ocenę wizualną potwierdza również przeprowadzony test korelacji - jest ona nikła ($r = `r korelacja_obserwowana`$) i nieistotna statystycznie ($p = `r p_korelacja`$). Rzecz wygląda podobnie, jeśli zacząć analizować relację między areałem o oceną opłacalności uprawy w zależności od tego, z którym przedsiębiorstwem respondent ma podpisaną umowę. We wszystkich przypadkach zaobserwowano brak istotnej statystycznie korelacji (dla Krajowej Spółki Cukrowej po tym, gdy usunięto obserwacje odstające).
+
+## Uwagi końcowe
+Ocena opłacalności uprawy buraków cukrowych przez respondentów okazała się względnie niska, lecz nie udało się określić czynników różnicujących oceny. Zauważono co prawda różnice wynikające z tego, z którym przedsiębiorstwem cukrowym podpisano umowę na sprzedaż buraków cukrowych (negatywnie wypadło Nordzucker w porównaniu z Krajową Spółką Cukrową oraz Pfeifer & Langen), ale są to wyniki wyłącznie w części satysfakcjonujące - nie odpowiadają one bowiem na pytanie, co dokładnie kryje się za zaobserwowanymi różnicami.
+
+Wyniki, które okazały się statystycznie nieistotne nie przesadząją oczywiście o tym, czy efekt istnieje - można wszak mówić w tym przypadku jedynie o tym, że czegoś nie zaobserwowano, a nie, że tego nie ma. W szczególności, brak efektu w wielu z opisanych przypadków może wynikać z niedostatecznej liczebności próbki w danych podgrupach. Studia, które kontrolowałyby te czynniki, powinny przynieść pewniejsze odpowiedzi na postawione w tym opracowaniu pytania.
